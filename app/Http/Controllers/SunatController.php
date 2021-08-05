@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Cliente;
+use App\Models\Serie;
+
 use Illuminate\Http\Request;
 use Greenter\Model\Client\Client;
 use Greenter\Model\Company\Company;
@@ -36,20 +39,22 @@ class SunatController extends Controller
     public function enviarFactura()
     {
         $see = require config_path('Sunat\config.php');
+        $cliente = Cliente::find(15);   
+        $num_comprobante = Serie::find(1);                 
 
         // Cliente
         $client = (new Client())
             ->setTipoDoc('6')
-            ->setNumDoc('20000000001')
-            ->setRznSocial('EMPRESA X');       
+            ->setNumDoc($cliente->num_documento)
+            ->setRznSocial($cliente->nombre);       
 
         // Venta
         $invoice = (new Invoice())
             ->setUblVersion('2.1')
             ->setTipoOperacion('0101') // Venta - Catalog. 51
             ->setTipoDoc('01') // Factura - Catalog. 01 
-            ->setSerie('F001')
-            ->setCorrelativo('1')
+            ->setSerie($num_comprobante->serie)
+            ->setCorrelativo($num_comprobante->correlativo)
             ->setFechaEmision(new \DateTime()) // Zona horaria: Lima
             ->setFormaPago(new FormaPagoContado()) // FormaPago: Contado
             ->setTipoMoneda('PEN') // Sol - Catalog. 02
@@ -60,8 +65,7 @@ class SunatController extends Controller
             ->setTotalImpuestos(18.00)
             ->setValorVenta(100.00)
             ->setSubTotal(118.00)
-            ->setMtoImpVenta(118.00)
-            ;
+            ->setMtoImpVenta(118.00);
 
         $item = (new SaleDetail())
             ->setCodProducto('P001')
@@ -75,17 +79,14 @@ class SunatController extends Controller
             ->setTipAfeIgv('10') // Gravado Op. Onerosa - Catalog. 07
             ->setTotalImpuestos(18.00) // Suma de impuestos en el detalle
             ->setMtoValorVenta(100.00)
-            ->setMtoPrecioUnitario(59.00)
-            ;
+            ->setMtoPrecioUnitario(59.00);
 
         $legend = (new Legend())
             ->setCode('1000') // Monto en letras - Catalog. 52
             ->setValue('SON DOSCIENTOS TREINTA Y SEIS CON 00/100 SOLES');
 
         $invoice->setDetails([$item])
-                ->setLegends([$legend]);
-
-                
+                ->setLegends([$legend]);              
 
         $result = $see->send($invoice);
 
