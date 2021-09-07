@@ -30,5 +30,6 @@ Route::middleware(['auth:sanctum', 'verified'])->get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->name('dashboard');
 
+Route::get('/sunat/facturas', [SunatController::class, 'getFacturas'])->name('sunat.facturas');
 
-Route::get('/sunat/enviar', [SunatController::class, 'enviarFactura'])->name('sunat.enviar');
+Route::get('/sunat/enviar/{comprobante_id}', [SunatController::class, 'enviarFactura'])->name('sunat.enviar');

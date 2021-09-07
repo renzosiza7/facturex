@@ -5,15 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Cliente extends Model
+class Vendedor extends Model
 {
     use HasFactory;
 
     protected $connection = "mysql2";
-    protected $table = 'personas';    
+    protected $table = 'users';  
 
     public function ventas()
     {
-        return $this->hasMany(Venta::class, 'idcliente');
+        return $this->hasMany(Venta::class, 'idusuario');
     }
 }

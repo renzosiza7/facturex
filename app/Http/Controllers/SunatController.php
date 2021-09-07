@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
-use App\Models\Serie;
+use App\Models\Venta;
+use App\Models\DetalleVenta;
+
+use Inertia\Inertia;
 
 use Illuminate\Http\Request;
 use Greenter\Model\Client\Client;
@@ -14,12 +17,22 @@ use Greenter\Model\Sale\Invoice;
 use Greenter\Model\Sale\SaleDetail;
 use Greenter\Model\Sale\Legend;
 
-class SunatController extends Controller
-{
-    private $empresa;    
+use Luecano\NumeroALetras\NumeroALetras;
 
-    function __construct() 
-    {         
+class SunatController extends Controller
+{        
+    public function getFacturas() 
+    {
+        $facturas = Venta::with('cliente')
+                        ->with('vendedor')
+                        ->where('tipo_comprobante', 'FACTURA')
+                        ->latest()->get();
+        
+        return Inertia::render('Sunat/Facturas', compact('facturas'));
+    }
+    
+    public function enviarFactura($comprobante_id)
+    {              
         $direccion_empresa = (new Address())
             ->setUbigueo(config('cardena.direccion.ubigeo'))
             ->setDepartamento(config('cardena.direccion.departamento'))
@@ -29,70 +42,86 @@ class SunatController extends Controller
             ->setDireccion(config('cardena.direccion.direccion'))
             ->setCodLocal(config('cardena.direccion.codigo_local')); // Codigo de establecimiento asignado por SUNAT, 0000 por defecto.
         
-        $this->empresa = (new Company())
+        $empresa = (new Company())
             ->setRuc(config('cardena.empresa.ruc'))
             ->setRazonSocial(config('cardena.empresa.razon_social'))
             ->setNombreComercial(config('cardena.empresa.nombre_comercial'))
             ->setAddress($direccion_empresa);
-    } 
-    
-    public function enviarFactura()
-    {
-        $see = require config_path('Sunat\config.php');
-        $cliente = Cliente::find(15);   
-        $num_comprobante = Serie::find(1);                 
+
+        $comprobante = Venta::with('cliente')
+                            ->with('vendedor:id,usuario')
+                            ->with('detalles_venta.producto')
+                            ->where('id', $comprobante_id)
+                            ->first();                         
+
+        $see = require config_path('Sunat\config.php');                  
 
         // Cliente
-        $client = (new Client())
+        $cliente = (new Client())
             ->setTipoDoc('6')
-            ->setNumDoc($cliente->num_documento)
-            ->setRznSocial($cliente->nombre);       
+            ->setNumDoc($comprobante->cliente->num_documento)
+            ->setRznSocial($comprobante->cliente->nombre);   
+
+        $igv_porcentaje = 0.18;
+        $factor_porcentaje = 1.18; //solo para op. gravadas
+        $op_gravadas = 0.00;
+        $igv = 0;        
+            
+        foreach ($comprobante->detalles_venta as $idx => $detalle_venta) {  
+            $igv_detalle = $detalle_venta->precio * $detalle_venta->cantidad * $igv_porcentaje;
+
+            $items[$idx] = (new SaleDetail())
+                                ->setCodProducto($detalle_venta->producto->id)
+                                ->setUnidad('NIU') // Unidad - Catalog. 03
+                                ->setCantidad($detalle_venta->cantidad)
+                                ->setMtoValorUnitario($detalle_venta->precio)
+                                ->setDescripcion($detalle_venta->producto->nombre)
+                                ->setMtoBaseIgv($detalle_venta->precio)
+                                ->setPorcentajeIgv(18.00) // 18%
+                                ->setIgv($igv_detalle)
+                                ->setTipAfeIgv('10') // Gravado Op. Onerosa - Catalog. 07
+                                ->setTotalImpuestos($igv_detalle) // Suma de impuestos en el detalle
+                                ->setMtoValorVenta($detalle_venta->precio * $detalle_venta->cantidad)
+                                ->setMtoPrecioUnitario($detalle_venta->precio * $factor_porcentaje);
+            
+            $op_gravadas = $op_gravadas + $detalle_venta->precio * $detalle_venta->cantidad;
+            $igv = $igv + $igv_detalle;	
+        }
+
+        $total = $op_gravadas;
 
         // Venta
         $invoice = (new Invoice())
             ->setUblVersion('2.1')
             ->setTipoOperacion('0101') // Venta - Catalog. 51
             ->setTipoDoc('01') // Factura - Catalog. 01 
-            ->setSerie($num_comprobante->serie)
-            ->setCorrelativo($num_comprobante->correlativo)
+            ->setSerie($comprobante->serie_comprobante)
+            ->setCorrelativo($comprobante->num_comprobante)
             ->setFechaEmision(new \DateTime()) // Zona horaria: Lima
             ->setFormaPago(new FormaPagoContado()) // FormaPago: Contado
             ->setTipoMoneda('PEN') // Sol - Catalog. 02
-            ->setCompany($this->empresa)
-            ->setClient($client)
-            ->setMtoOperGravadas(100.00)
-            ->setMtoIGV(18.00)
-            ->setTotalImpuestos(18.00)
-            ->setValorVenta(100.00)
-            ->setSubTotal(118.00)
-            ->setMtoImpVenta(118.00);
+            ->setCompany($empresa)
+            ->setClient($cliente)
+            ->setMtoOperGravadas($total)
+            ->setMtoIGV($igv)
+            ->setTotalImpuestos($igv)
+            ->setValorVenta($total)
+            ->setSubTotal($total + $igv)
+            ->setMtoImpVenta($total + $igv);        
 
-        $item = (new SaleDetail())
-            ->setCodProducto('P001')
-            ->setUnidad('NIU') // Unidad - Catalog. 03
-            ->setCantidad(2)
-            ->setMtoValorUnitario(50.00)
-            ->setDescripcion('PRODUCTO 1')
-            ->setMtoBaseIgv(100)
-            ->setPorcentajeIgv(18.00) // 18%
-            ->setIgv(18.00)
-            ->setTipAfeIgv('10') // Gravado Op. Onerosa - Catalog. 07
-            ->setTotalImpuestos(18.00) // Suma de impuestos en el detalle
-            ->setMtoValorVenta(100.00)
-            ->setMtoPrecioUnitario(59.00);
+        $formatter = new NumeroALetras();
+        $montoLetras = $formatter->toInvoice($total + $igv, 2, 'soles');
 
         $legend = (new Legend())
-            ->setCode('1000') // Monto en letras - Catalog. 52
-            ->setValue('SON DOSCIENTOS TREINTA Y SEIS CON 00/100 SOLES');
+            ->setCode('1000') // Monto en letras - Catalog. 52          
+            ->setValue($montoLetras);
 
-        $invoice->setDetails([$item])
-                ->setLegends([$legend]);              
+        $invoice->setDetails($items)->setLegends([$legend]);              
 
         $result = $see->send($invoice);
 
         // Guardar XML firmado digitalmente.
-        file_put_contents($invoice->getName().'.xml',
-                            $see->getFactory()->getLastXml());
+        file_put_contents($invoice->getName().'.xml', $see->getFactory()->getLastXml());
         
         // Verificamos que la conexión con SUNAT fue exitosa.
         if (!$result->isSuccess()) {

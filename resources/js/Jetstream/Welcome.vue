@@ -8,7 +8,7 @@
             <div class="mt-8 text-2xl">
                 Welcome to your Jetstream application!
             </div>                        
-            <Link class="btn btn-success float-right" :href="route('sunat.enviar')">SUNAT</Link>
+            <!--<Link class="btn btn-success float-right" :href="route('sunat.enviar')">SUNAT</Link>-->
             <div class="mt-6 text-gray-500">
                 Laravel Jetstream provides a beautiful, robust starting point for your next Laravel application. Laravel is designed
                 to help you build your application using a development environment that is simple, powerful, and enjoyable. We believe
