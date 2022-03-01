@@ -54,7 +54,7 @@ class SunatController extends Controller
                             ->where('id', $comprobante_id)
                             ->first();                         
 
-        $see = require config_path('Sunat\config.php');                  
+        $see = require config_path('Sunat/config.php');                  
 
         // Cliente
         $cliente = (new Client())
@@ -68,27 +68,28 @@ class SunatController extends Controller
         $igv = 0;        
             
         foreach ($comprobante->detalles_venta as $idx => $detalle_venta) {  
-            $igv_detalle = $detalle_venta->precio * $detalle_venta->cantidad * $igv_porcentaje;
+            $valor_uni = $detalle_venta->precio / $factor_porcentaje;
+            $igv_detalle = $valor_uni * $detalle_venta->cantidad * $igv_porcentaje;
 
             $items[$idx] = (new SaleDetail())
                                 ->setCodProducto($detalle_venta->producto->id)
                                 ->setUnidad('NIU') // Unidad - Catalog. 03
-                                ->setCantidad($detalle_venta->cantidad)
-                                ->setMtoValorUnitario($detalle_venta->precio)
                                 ->setDescripcion($detalle_venta->producto->nombre)
-                                ->setMtoBaseIgv($detalle_venta->precio)
+                                ->setCantidad($detalle_venta->cantidad)
+                                ->setMtoValorUnitario($valor_uni)
+                                ->setMtoValorVenta($valor_uni * $detalle_venta->cantidad)
+                                ->setMtoBaseIgv($valor_uni * $detalle_venta->cantidad)
                                 ->setPorcentajeIgv(18.00) // 18%
                                 ->setIgv($igv_detalle)
                                 ->setTipAfeIgv('10') // Gravado Op. Onerosa - Catalog. 07
                                 ->setTotalImpuestos($igv_detalle) // Suma de impuestos en el detalle
-                                ->setMtoValorVenta($detalle_venta->precio * $detalle_venta->cantidad)
-                                ->setMtoPrecioUnitario($detalle_venta->precio * $factor_porcentaje);
+                                ->setMtoPrecioUnitario($valor_uni * $factor_porcentaje);
             
-            $op_gravadas = $op_gravadas + $detalle_venta->precio * $detalle_venta->cantidad;
+            $op_gravadas = $op_gravadas + $valor_uni * $detalle_venta->cantidad;
             $igv = $igv + $igv_detalle;	
         }
 
-        $total = $op_gravadas;
+        $total = $op_gravadas + $igv;
 
         // Venta
         $invoice = (new Invoice())
@@ -102,15 +103,15 @@ class SunatController extends Controller
             ->setTipoMoneda('PEN') // Sol - Catalog. 02
             ->setCompany($empresa)
             ->setClient($cliente)
-            ->setMtoOperGravadas($total)
+            ->setMtoOperGravadas($op_gravadas)
             ->setMtoIGV($igv)
             ->setTotalImpuestos($igv)
-            ->setValorVenta($total)
-            ->setSubTotal($total + $igv)
-            ->setMtoImpVenta($total + $igv);        
+            ->setValorVenta($op_gravadas)
+            ->setSubTotal($total)
+            ->setMtoImpVenta($total);        
 
         $formatter = new NumeroALetras();
-        $montoLetras = $formatter->toInvoice($total + $igv, 2, 'soles');
+        $montoLetras = $formatter->toInvoice($total, 2, 'soles');
 
         $legend = (new Legend())
             ->setCode('1000') // Monto en letras - Catalog. 52          
@@ -121,7 +122,13 @@ class SunatController extends Controller
         $result = $see->send($invoice);
 
         // Guardar XML firmado digitalmente.
-        file_put_contents($invoice->getName().'.xml', $see->getFactory()->getLastXml());
+        $dia_actual = date('Y-m-d');
+        $path = storage_path('app/public/Sunat/XML/'. $dia_actual . '/' . $comprobante->serie_comprobante) ;
+        if (!file_exists($path)) {
+            mkdir($path, 0777, true);
+        }
+        
+        file_put_contents(storage_path('app/public/Sunat/XML/' . $dia_actual . '/' . $comprobante->serie_comprobante . '/' . $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante . '.xml'), $see->getFactory()->getLastXml());
         
         // Verificamos que la conexión con SUNAT fue exitosa.
         if (!$result->isSuccess()) {
@@ -130,9 +137,13 @@ class SunatController extends Controller
             echo 'Mensaje Error: '.$result->getError()->getMessage();
             exit();
         }
+        $path = storage_path('app/public/Sunat/CDR/'. $dia_actual . '/' . $comprobante->serie_comprobante) ;
+        if (!file_exists($path)) {
+            mkdir($path, 0777, true);
+        }
         
         // Guardamos el CDR
-        file_put_contents('R-'.$invoice->getName().'.zip', $result->getCdrZip());
+        file_put_contents(storage_path('app/public/Sunat/CDR/'. $dia_actual . '/' . $comprobante->serie_comprobante . '/' . 'RF-' . $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante . '.zip'), $result->getCdrZip());
 
         $cdr = $result->getCdrResponse();
 

@@ -9,10 +9,14 @@ $password = 'rafael2021';
 $certificate = new X509Certificate($pfx, $password);
 
 $see = new See();
-//$see->setCertificate(file_get_contents(__DIR__.'/certificate.pem'));
-$see->setCertificate($certificate->export(X509ContentType::PEM));
+
+// $see->setCertificate($certificate->export(X509ContentType::PEM));
+// $see->setService(SunatEndpoints::FE_BETA);
+// $see->setClaveSOL('20539375866', 'RAFAEL21', 'Rafael2021');
+
+/************************** GREENTER ***************************/
+$see->setCertificate(file_get_contents(__DIR__.'/certificate.pem'));
 $see->setService(SunatEndpoints::FE_BETA);
-//$see->setClaveSOL('20000000001', 'MODDATOS', 'moddatos');
-$see->setClaveSOL('20539375866', 'RAFAEL21', 'Rafael2021');
+$see->setClaveSOL('20000000001', 'MODDATOS', 'moddatos');
 
 return $see;
