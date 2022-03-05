@@ -22202,10 +22202,10 @@ var _hoisted_6 = {
   "class": "-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8"
 };
 var _hoisted_7 = {
-  "class": "\r\n                  py-2\r\n                  align-middle\r\n                  inline-block\r\n                  min-w-full\r\n                  sm:px-6\r\n                  lg:px-8\r\n                "
+  "class": "\n                  py-2\n                  align-middle\n                  inline-block\n                  min-w-full\n                  sm:px-6\n                  lg:px-8\n                "
 };
 var _hoisted_8 = {
-  "class": "\r\n                    shadow\r\n                    overflow-hidden\r\n                    border-b border-gray-200\r\n                    sm:rounded-lg\r\n                  "
+  "class": "\n                    shadow\n                    overflow-hidden\n                    border-b border-gray-200\n                    sm:rounded-lg\n                  "
 };
 var _hoisted_9 = {
   "class": "min-w-full divide-y divide-gray-200"
