@@ -32,4 +32,6 @@ Route::middleware(['auth:sanctum', 'verified'])->get('/dashboard', function () {
 
 Route::get('/sunat/facturas', [SunatController::class, 'getFacturas'])->name('sunat.facturas');
 
-Route::get('/sunat/enviar/{comprobante_id}', [SunatController::class, 'enviarFactura'])->name('sunat.enviar');
+Route::post('/sunat/enviar_factura/{comprobante_id}', [SunatController::class, 'enviarFactura'])->name('sunat.enviar_factura');
+Route::post('/sunat/comunicar_baja/{comprobante_id}', [SunatController::class, 'comBajaFactura'])->name('sunat.comunicacion_baja');
+Route::post('/sunat/consultar_ticket/{comprobante_id}', [SunatController::class, 'consultarTicket'])->name('sunat.consultar_ticket');
