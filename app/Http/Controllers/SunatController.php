@@ -139,7 +139,7 @@ class SunatController extends Controller
             // Mostrar error al conectarse a SUNAT.
             // echo 'Codigo Error: '.$result->getError()->getCode();
             // echo 'Mensaje Error: '.$result->getError()->getMessage();
-            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'errorCode' => $result->getError()->getCode(), 'errorMessage' => $result->getError()->getMessage(), 'error' => true];
+            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'code' => $result->getError()->getCode(), 'message' => $result->getError()->getMessage(), 'error' => true];
             // exit();
             return $response;
         }
@@ -160,12 +160,12 @@ class SunatController extends Controller
             $comprobante->estado = 'Enviada';
             $comprobante->fecha_hora = $fecha_emision;
             $comprobante->update();
-            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'successMessage' => $cdr->getDescription(), 'error' => false];
+            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'message' => $cdr->getDescription(), 'error' => false];
             if (count($cdr->getNotes()) > 0) {
                 // echo 'OBSERVACIONES:'.PHP_EOL;
                 $comprobante->estado = 'Observada';
                 $comprobante->update();
-                $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'successMessage' => $cdr->getDescription(), 'observaciones' => $cdr->getNotes(), 'error' => false];
+                $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'message' => $cdr->getDescription(), 'observaciones' => $cdr->getNotes(), 'error' => false];
                 // Corregir estas observaciones en siguientes emisiones.
                 // var_dump($cdr->getNotes());
             }  
@@ -173,11 +173,11 @@ class SunatController extends Controller
             // echo 'ESTADO: RECHAZADA'.PHP_EOL;
             $comprobante->estado = 'Rechazada';
             $comprobante->update();
-            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'errorCode' => $code, 'errorMessage' => $cdr->getDescription(), 'error' => true];
+            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'code' => $code, 'message' => $cdr->getDescription(), 'error' => true];
         } else {
             /* Esto no debería darse, pero si ocurre, es un CDR inválido que debería tratarse como un error-excepción. */
             /*code: 0100 a 1999 */
-            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'errorCode' => $code, 'errorMessage' => $cdr->getDescription(), 'error' => true];
+            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'code' => $code, 'message' => $cdr->getDescription(), 'error' => true];
             // echo 'Excepción';
         }
 
@@ -212,7 +212,7 @@ class SunatController extends Controller
         $comunicacion_baja->save();
 
         $correlativo = str_pad($comunicacion_baja->id,5,"0",STR_PAD_LEFT);
-        Log::info($correlativo);
+        // Log::info($correlativo);
 
         $detail1 = new VoidedDetail();
         $detail1->setTipoDoc('01') // Factura
@@ -248,7 +248,7 @@ class SunatController extends Controller
 
         if (!$result->isSuccess()) {
             // Si hubo error al conectarse al servicio de SUNAT.
-            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'errorCode' => $result->getError()->getCode(), 'errorMessage' => $result->getError()->getMessage(), 'error' => true];
+            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'code' => $result->getError()->getCode(), 'message' => $result->getError()->getMessage(), 'error' => true];
             // exit();
             return $response;
             // var_dump($result->getError());
@@ -281,7 +281,7 @@ class SunatController extends Controller
         $statusResult = $see->getStatus($comunicacion_baja->ticket);
         if (!$statusResult->isSuccess()) {
             // Si hubo error al conectarse al servicio de SUNAT.
-            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'errorCode' => $statusResult->getError()->getCode(), 'errorMessage' => $statusResult->getError()->getMessage(), 'error' => true];
+            $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'code' => $statusResult->getError()->getCode(), 'message' => $statusResult->getError()->getMessage(), 'error' => true];
             // exit();
             return $response;
             // var_dump($statusResult->getError());
@@ -300,10 +300,7 @@ class SunatController extends Controller
         if ($statusResult->getCdrResponse()->getCode() == 0) {
             $comprobante->estado = 'Baja aceptada';
             $comprobante->update();
-        } else {
-            $comprobante->estado = 'Baja error';
-            $comprobante->update();
         }
-        return $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'successCode' => $statusResult->getCdrResponse()->getCode(), 'successMessage' => $statusResult->getCdrResponse()->getDescription(), 'error' => false];
+        return $response = ['doc' => $comprobante->serie_comprobante . '-' . $comprobante->num_comprobante, 'code' => $statusResult->getCdrResponse()->getCode(), 'message' => $statusResult->getCdrResponse()->getDescription(), 'error' => false];
     }
 }

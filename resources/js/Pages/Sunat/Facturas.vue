@@ -172,6 +172,21 @@
           </div>
       </div>
   </div>
+  <div v-show="toast.isOpen" class="animate__animated animate__fadeInDown fixed inset-y-0 w-full h-screen flex items-start justify-center">
+    <div id="toast-success" class="flex items-center p-4 mb-4 w-full max-w-xs text-gray-500 bg-white rounded-lg shadow dark:text-gray-400 dark:bg-gray-800">
+      <div v-show="!toast.error" class="inline-flex flex-shrink-0 justify-center items-center w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+      </div>
+      <div v-show="toast.error" class="inline-flex flex-shrink-0 justify-center items-center w-8 h-8 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
+      </div>
+      <div class="ml-3 text-sm font-normal">{{toast.message}}</div>
+      <!-- <button type="button" @click="toast = {isOpen: false}" class="ml-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700" data-collapse-toggle="toast-success" aria-label="Close">
+          <span class="sr-only">Close</span>
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+      </button> -->
+    </div>
+  </div>
 </template>
 
 <script>
@@ -179,7 +194,7 @@ const axios = require("axios");
 import AppLayout from "@/Layouts/AppLayout";
 import JetNavLink from '@/Jetstream/NavLink.vue'
 import { DeleteForever, FileUploadOutline, EyeCheck } from 'mdue';
-
+import 'animate.css';
 
 export default {
   name: "sunat.facturas",
@@ -199,7 +214,14 @@ export default {
         func: '',
         fact: ''
       },
-      buttonKey: 1
+      toast: {
+        isOpen: false,
+        code: '',
+        message: '',
+        error: ''
+      },
+      buttonKey: 1,
+
       // app_url: this.$root.app_url,
 
 
@@ -208,113 +230,58 @@ export default {
   created() {
 
   },
+  watch: {
+    toast: function(val) {
+      val.isOpen = setTimeout(() => {
+        this.toast.isOpen = false
+      }, 4000);
+    }
+  },
   methods: {
     enviarFactura(factura) {
       this.modal.isOpen = false;
       axios.post(`/sunat/enviar_factura/${factura.id}`)
         .then(response => {
+          let error = false;
           if (response.data.error == false) {
-            // this.$bvToast.toast(
-            //   "Comprobante enviado con exito",
-            //   {
-            //     title: "Envio de comprobante a sunat",
-            //     variant: "success",
-            //     toaster: "b-toaster-bottom-right",
-            //     solid: true
-            //   }
-            // );
             factura.estado = 'Enviada'
             console.log(response.data);
           } else {
-            // this.$bvToast.toast(
-            //   "Hubo un error al enviar el comprobante",
-            //   {
-            //     title: "Error al enviar el comprobante",
-            //     variant: "danger",
-            //     toaster: "b-toaster-bottom-right",
-            //     solid: true
-            //   }
-            // );
-            factura.estado = 'Error'
+            error = true;
             console.log(response.data);
+          }
+          this.toast = {
+            error,
+            message: response.data.message,
+            isOpen: true
           }
         })
         .catch(function(error) {
           console.log(error);
         });
-      // this.$bvModal
-      //   .msgBoxConfirm(
-      //       "¿Esta seguro de querer enviar este comprobante?",
-      //       {
-      //         title: "Enviar comprobante",
-      //         okVariant: "success",
-      //         okTitle: "SI",
-      //         cancelTitle: "NO",
-      //         centered: true
-      //       }
-      //   )
-      //   .then(async value => {
-      //       if (value) {
-      //         axios.post(`${this.app_url}/sunat/enviar/${id_factura}`)
-      //           .then(response => {
-      //             if (response.data.error == false) {
-      //               this.$bvToast.toast(
-      //                 "Comprobante enviado con exito",
-      //                 {
-      //                   title: "Envio de comprobante a sunat",
-      //                   variant: "success",
-      //                   toaster: "b-toaster-bottom-right",
-      //                   solid: true
-      //                 }
-      //               );
-      //             } else {
-      //               this.$bvToast.toast(
-      //                 "Hubo un error al enviar el comprobante",
-      //                 {
-      //                   title: "Error al enviar el comprobante",
-      //                   variant: "danger",
-      //                   toaster: "b-toaster-bottom-right",
-      //                   solid: true
-      //                 }
-      //               );
-      //             }
-      //           })
-      //           .catch(function(error) {
-      //             console.log(error);
-      //           });
-      //       }
-      //   });
       setTimeout(() => {
         this.buttonKey++
-      }, 2000);
+      }, 1000);
     },
     comunicarBaja(factura) {
       this.modal.isOpen = false;
       axios.post(`/sunat/comunicar_baja/${factura.id}`)
         .then(response => {
+          let error = false;
+          let message;
           if (response.data.error == false) {
-            // this.$bvToast.toast(
-            //   "Comprobante enviado con exito",
-            //   {
-            //     title: "Envio de comprobante a sunat",
-            //     variant: "success",
-            //     toaster: "b-toaster-bottom-right",
-            //     solid: true
-            //   }
-            // );
             factura.estado = 'Baja en proceso'
+            message = `Se obtuvo el Ticket: ${response.data.ticket}`;
             console.log(response.data);
           } else {
-            // this.$bvToast.toast(
-            //   "Hubo un error al enviar el comprobante",
-            //   {
-            //     title: "Error al enviar el comprobante",
-            //     variant: "danger",
-            //     toaster: "b-toaster-bottom-right",
-            //     solid: true
-            //   }
-            // );
+            error = true;
+            message = response.data.message;
             console.log(response.data);
+          }
+          this.toast = {
+            error,
+            message,
+            isOpen: true
           }
         })
         .catch(function(error) {
@@ -322,17 +289,24 @@ export default {
         });
       setTimeout(() => {
         this.buttonKey++
-      }, 2000);
+      }, 1000);
     },
     consultarTicket(factura) {    
       this.modal.isOpen = false;
       axios.post(`/sunat/consultar_ticket/${factura.id}`)
         .then(response => {
+          let error = false;
           if (response.data.error == false) {
             factura.estado = 'Baja aceptada'
             console.log(response.data);
           } else {
+            error = true;
             console.log(response.data);
+          }
+          this.toast = {
+            error,
+            message: response.data.message,
+            isOpen: true
           }
         })
         .catch(function(error) {
@@ -340,7 +314,7 @@ export default {
         });
       setTimeout(() => {
         this.buttonKey++
-      }, 2000);
+      }, 1000);
     }
   }
 };
